@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concert Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #7209b7; 
+            --primary-hover: #560bad;
+            --bg-color: #f8f9fa;
+            --border: #e9ecef;
+            --text-main: #2b2d42;
+            --text-muted: #6c757d;
+            --card-bg: #ffffff;
+            --today-bg: #f3e8ff;
+            --danger: #fa5252;
+            --info: #4dabf7;
+        }
+
+        body { 
+            font-family: 'Prompt', sans-serif; 
+            background-color: var(--bg-color); 
+            margin: 0; 
+            padding: 10px; 
+            color: var(--text-main); 
+            min-height: 100vh;
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box;
+        }
+
+/* Header & Controls */
+        .header-container { 
+            display: flex; 
+            flex-direction: row; /* บังคับให้อยู่แนวนอนเสมอ */
+            align-items: center; 
+            justify-content: space-between; 
+            margin-bottom: 15px; 
+            gap: 15px;
+            padding: 0 5px;
+            flex-wrap: wrap; /* ยอมให้ปัดบรรทัดได้ถ้าจอมือถือเล็กมากๆ */
+        }
+        
+        .header-container h2 { 
+            margin: 0; 
+            font-size: 1.5em; 
+            color: var(--primary); 
+            white-space: nowrap; /* ป้องกันคำว่า Concert Tracker โดนตัดขึ้นบรรทัดใหม่ */
+            display: flex;
+            align-items: center;
+        }
+        
+        .month-controls { 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+        }
+        .month-controls button { 
+            background: white; 
+            border: 1px solid var(--border); 
+            padding: 6px 12px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-family: 'Prompt'; 
+            font-size: 0.9em;
+            transition: all 0.2s; 
+        }
+        .month-controls button:hover { background: #f1f3f5; }
+        .btn-today { background: var(--today-bg) !important; color: var(--primary) !important; border-color: var(--primary) !important; font-weight: 600 !important; }
+        .month-controls h3 { margin: 0 10px; min-width: 140px; text-align: center; font-size: 1.1em; color: var(--text-main); }
+
+        /* Main Layout */
+        .main-layout { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            width: 100%; 
+            flex: 1; 
+        }
+        @media(min-width: 992px) {
+            .main-layout { flex-direction: row; align-items: flex-start; }
+            .calendar-container { flex: 1; }
+            .sidebar { width: 320px; flex-shrink: 0; position: sticky; top: 15px;}
+        }
+
+        /* Calendar Grid */
+        .calendar-container { 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+            border: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .calendar-header { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            background: #f1f3f5; 
+            text-align: center; 
+            font-weight: 500; 
+            padding: 10px 0; 
+            border-bottom: 1px solid var(--border); 
+            font-size: 0.85em;
+        }
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            grid-auto-rows: minmax(80px, auto); 
+        }
+        .calendar-day { 
+            border-right: 1px solid var(--border); 
+            border-bottom: 1px solid var(--border); 
+            padding: 4px; 
+            display: flex; 
+            flex-direction: column; 
+            transition: background 0.2s; 
+            cursor: pointer;
+        }
+        .calendar-day:nth-child(7n) { border-right: none; }
+        .calendar-day.empty { background-color: #fcfcfc; cursor: default; }
+        .calendar-day.today { background-color: var(--today-bg); }
+        .calendar-day.today .day-number { background-color: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; justify-content: center; align-items: center; }
+        .calendar-day:not(.empty):hover { background-color: #f1f3f5; }
+        .day-number { font-weight: 500; margin-bottom: 4px; display: inline-block; font-size: 0.85em; padding-left: 4px;}
+
+        /* Event Chips */
+        .event-chip { 
+            background-color: white; 
+            color: var(--text-main); 
+            padding: 4px 6px; 
+            border-radius: 4px; 
+            font-size: 0.7em; 
+            margin-bottom: 3px; 
+            border-left: 3px solid var(--primary); 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
+        @media(min-width: 768px) { .event-chip { font-size: 0.75em; } }
+        .event-time-badge { font-weight: 600; color: var(--primary); margin-right: 2px; }
+
+        /* Sidebar Notifications */
+        .sidebar { 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            padding: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+            border: 1px solid var(--border); 
+        }
+        .sidebar h3 { margin-top: 0; border-bottom: 2px solid var(--primary); padding-bottom: 10px; font-size: 1.1em; }
+        .notification-item { padding: 10px; border-radius: 8px; background: #f8f9fa; margin-bottom: 10px; border-left: 4px solid #ffba08; cursor: pointer; }
+        .notification-item.urgent { border-left-color: #f72585; background: #fff0f5; }
+        .notify-title { font-weight: 600; font-size: 0.85em; margin-bottom: 5px; }
+        .notify-meta { font-size: 0.75em; color: var(--text-muted); }
+        .notify-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; font-weight: bold; margin-bottom: 5px; }
+        .badge-urgent { background: #f72585; color: white; }
+        .badge-soon { background: #ffba08; color: #333; }
+
+        /* Modals & Forms */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; 
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .modal-content { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            width: 100%; 
+            max-width: 400px; 
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .modal-header h3 { margin: 0; font-size: 1.2em; color: var(--primary);}
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9em; font-weight: 500;}
+        .form-group input[type="text"], 
+        .form-group input[type="number"], 
+        .form-group input[type="url"], 
+        .form-group textarea, 
+        .form-group input[type="time"] { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ced4da; 
+            border-radius: 8px; 
+            font-family: inherit; 
+            box-sizing: border-box; 
+            font-size: 0.95em;
+        }
+        .form-group input[type="time"] { font-size: 1.1em; text-align: center; }
+        .form-group input[type="file"] { font-size: 0.9em; margin-top: 5px; }
+
+        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e9ecef; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.85em; cursor: pointer; margin: 0; }
+        .checkbox-item input { width: 16px; height: 16px; cursor: pointer; }
+
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 1em; font-weight: 500; margin-top: 10px;}
+        .btn-submit:hover { background: var(--primary-hover); }
+        .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+        .action-buttons button { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; font-weight: 500;}
+        .btn-edit { background: var(--info); color: white; }
+        .btn-delete { background: var(--danger); color: white; }
+
+        #loader { display: none; justify-content: center; align-items: center; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.8); z-index: 2000; font-weight: bold; color: var(--primary); flex-direction: column; gap: 10px;}
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .event-link { display: inline-block; margin-top: 5px; color: var(--info); text-decoration: none; word-break: break-all; font-size: 0.9em; }
+        .event-link:hover { text-decoration: underline; }
+
+        /* Zoom Image Modal */
+        #imageZoomModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; cursor: zoom-out; }
+        #imageZoomModal img { max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); }
+        .zoom-close { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; font-weight: bold; cursor: pointer; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; line-height: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <div>กำลังซิงค์ข้อมูล...</div>
+    </div>
+
+    <div class="header-container">
+        <h2>🎶 Concert Tracker</h2>
+        <div class="month-controls">
+            <button onclick="changeMonth(-1)">◀</button>
+            <button class="btn-today" onclick="goToToday()">วันนี้</button>
+            <h3 id="monthYearDisplay"></h3>
+            <button onclick="changeMonth(1)">▶</button>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <div>อา.</div><div>จ.</div><div>อ.</div><div>พ.</div>
+                <div>พฤ.</div><div>ศ.</div><div>ส.</div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+        <div class="sidebar">
+            <h3>🎫 คิวงาน / วันกดบัตรที่ใกล้ถึง</h3>
+            <div id="notificationList"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="addEventModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalFormTitle">📝 เพิ่มกำหนดการ</h3>
+                <button class="close-btn" onclick="closeModal('addEventModal')">&times;</button>
+            </div>
+            <input type="hidden" id="selectedDateFull">
+            <input type="hidden" id="editEventId">
+            <input type="hidden" id="imageBase64">
+            
+            <div class="form-group">
+                <label>📌 ชื่องาน / ศิลปิน</label>
+                <input type="text" id="eventName" placeholder="เช่น กดบัตรบรูโน่ มาร์ส">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label>⏰ เวลาเริ่มต้น</label>
+                    <input type="time" id="startTime" value="10:00">
+                </div>
+                <div class="form-group">
+                    <label>💰 ราคาบัตร (บาท)</label>
+                    <input type="number" id="eventPrice" placeholder="เช่น 4500">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ประเภทกิจกรรม</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="วันกดบัตร"> <span>🎟️ กดบัตร</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="วันคอนเสิร์ต"> <span>🎤 คอนเสิร์ต</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="งานแฟนมีต"> <span>🤝 แฟนมีต</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="นิทรรศการ"> <span>🖼️ นิทรรศการ</span></label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>📍 แพลตฟอร์ม / สถานที่จัดงาน</label>
+                <div class="checkbox-group" style="margin-bottom: 8px;">
+                    <label class="checkbox-item"><input type="checkbox" name="platform" value="Thaiticketmajor"> <span>Thaiticketmajor</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="platform" value="Eventpop"> <span>Eventpop</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="platform" value="The Concert"> <span>The Concert</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="platform" value="Allticket"> <span>Allticket</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="platform" value="Ticketmelon"> <span>Ticketmelon</span></label>
+                </div>
+                <input type="text" id="otherLocation" placeholder="สถานที่อื่นๆ หรือระบุเอง...">
+            </div>
+
+            <div class="form-group">
+                <label>🔗 ลิงก์ช่องทาง (URL)</label>
+                <input type="url" id="eventLink" placeholder="https://...">
+            </div>
+
+            <div class="form-group">
+                <label>🖼️ แนบผังที่นั่ง / รูปภาพ (เลือกได้ 1 รูป)</label>
+                <input type="file" id="eventImage" accept="image/*" onchange="previewImage(event)">
+                <div id="imagePreviewContainer" style="display:none; margin-top:10px; text-align:center; position:relative;">
+                    <img id="imagePreview" style="max-width:100%; max-height:150px; border-radius:8px; border:1px solid var(--border);">
+                    <button type="button" onclick="removeImage()" style="position:absolute; top:-10px; right:-10px; background:var(--danger); color:white; border:none; border-radius:50%; width:25px; height:25px; cursor:pointer;">✕</button>
+                </div>
+            </div>
+
+            <button class="btn-submit" id="saveBtn" onclick="saveEvent()">บันทึกกำหนดการ</button>
+        </div>
+    </div>
+
+    <div class="modal" id="viewEventModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="viewTitle" style="color: var(--primary); margin:0; line-height: 1.3;">ชื่องาน</h3>
+                <button class="close-btn" onclick="closeModal('viewEventModal')">&times;</button>
+            </div>
+            <p style="margin: 0 0 15px 0; font-size: 0.9em; color: var(--text-muted);" id="viewDateStr"></p>
+            
+            <div style="font-size: 0.95em; line-height: 1.8;">
+                <strong>⏰ เวลา:</strong> <span id="viewTime"></span> น.<br>
+                <strong>💰 ราคาโดยประมาณ:</strong> <span id="viewPrice"></span><br>
+                <strong>📌 กิจกรรม:</strong> <span id="viewTasks"></span><br>
+                <strong>📍 สถานที่:</strong> <span id="viewLocation"></span><br>
+                <div id="viewLinkContainer" style="display: none; margin-top: 5px;">
+                    <strong>🔗 ลิงก์:</strong> <a href="#" target="_blank" id="viewLink" class="event-link">คลิกเพื่อเปิดหน้าเว็บ</a>
+                </div>
+            </div>
+
+            <div id="viewImageContainer" style="display:none; margin-top:15px; text-align:center;">
+                <p style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 5px;">🔍 กดที่รูปเพื่อขยาย</p>
+                <img id="viewImage" src="" style="max-width:100%; max-height:200px; border-radius:8px; cursor:zoom-in; border:1px solid var(--border);" onclick="openZoomImage(this.src)">
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn-edit" onclick="openEditModal()">✏️ แก้ไข</button>
+                <button class="btn-delete" id="deleteBtn" onclick="deleteEvent()">🗑️ ลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="imageZoomModal" onclick="closeModal('imageZoomModal')">
+        <div class="zoom-close">&times;</div>
+        <img id="zoomedImage" src="">
+    </div>
+
+    <script>
+        // ❌ นำลิงก์จาก Google Apps Script มาวางแทนที่ตรงนี้ครับ ❌
+        const API_URL = "วาง_URL_จาก_APPS_SCRIPT_ตรงนี้";
+        let events = []; 
+
+        let currentDate = new Date(); 
+        let currentMonth = currentDate.getMonth(); 
+        let currentYear = currentDate.getFullYear();
+        let currentViewEventId = null; 
+        const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+        async function fetchEvents() {
+            if(API_URL === "วาง_URL_จาก_APPS_SCRIPT_ตรงนี้" || API_URL === "") {
+                console.warn("ยังไม่ได้ใส่ API URL");
+                renderCalendar();
+                return;
+            }
+
+            document.getElementById('loader').style.display = 'flex';
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                events = data; 
+                renderCalendar();
+                renderNotifications();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("ไม่สามารถโหลดข้อมูลจาก Google Sheets ได้ กรุณาตรวจสอบ URL");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        function changeMonth(step) {
+            currentMonth += step;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderCalendar();
+        }
+
+        function goToToday() {
+            const today = new Date();
+            currentMonth = today.getMonth();
+            currentYear = today.getFullYear();
+            renderCalendar();
+        }
+
+        function getFormattedDate(year, month, day) {
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+
+        function renderCalendar() {
+            document.getElementById('monthYearDisplay').innerText = `${monthNames[currentMonth]} ${currentYear}`;
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const today = new Date(); 
+
+            for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')).className = 'calendar-day empty'; }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                if (i === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
+                    dayDiv.classList.add('today');
+                }
+                dayDiv.innerHTML = `<div class="day-number">${i}</div>`;
+                const dateString = getFormattedDate(currentYear, currentMonth, i);
+
+                dayDiv.onclick = (e) => {
+                    if (e.target === dayDiv || e.target.className === 'day-number') {
+                        openAddModal(dateString);
+                    }
+                };
+
+                let dayEvents = events.filter(e => e.date === dateString);
+                dayEvents.sort((a, b) => (a.startTime || "00:00").localeCompare(b.startTime || "00:00"));
+
+                dayEvents.forEach(event => {
+                    const chip = document.createElement('div');
+                    chip.className = 'event-chip';
+                    
+                    let icon = '📌';
+                    if(event.tasks && event.tasks.includes('วันกดบัตร')) icon = '🎟️';
+                    else if(event.tasks && event.tasks.includes('วันคอนเสิร์ต')) icon = '🎤';
+                    else if(event.tasks && event.tasks.includes('งานแฟนมีต')) icon = '🤝';
+
+                    let timeDisplay = event.startTime ? `<span class="event-time-badge">${event.startTime}</span>` : '';
+                    chip.innerHTML = `${timeDisplay} ${icon} ${event.title}`;
+                    chip.onclick = (e) => { e.stopPropagation(); openViewModal(event); };
+                    dayDiv.appendChild(chip);
+                });
+                grid.appendChild(dayDiv);
+            }
+
+            const remainingCells = 42 - (firstDay + daysInMonth);
+            for(let i = 0; i < remainingCells; i++) { grid.appendChild(document.createElement('div')).className = 'calendar-day empty'; }
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notificationList');
+            list.innerHTML = '';
+            const now = new Date();
+
+            let upcomingEvents = events.map(e => {
+                const [year, month, day] = e.date.split('-');
+                const [hour, min] = e.startTime ? e.startTime.split(':') : ['00', '00'];
+                const eventDateTime = new Date(year, month - 1, day, hour, min);
+                const diffMs = eventDateTime - now;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                const diffDays = Math.floor(diffHours / 24);
+                return { ...e, diffMs, diffMins, diffHours, diffDays };
+            }).filter(e => e.diffMs > -86400000 && e.diffDays <= 14).sort((a, b) => a.diffMs - b.diffMs); 
+
+            if (upcomingEvents.length === 0) {
+                list.innerHTML = '<p style="color:#aaa; text-align:center; font-size:0.9em; margin-top: 20px;">ยังไม่มีคิวกดบัตรหรือคอนเสิร์ตเร็วๆ นี้ครับ 💸</p>';
+                return;
+            }
+
+            upcomingEvents.forEach(event => {
+                const item = document.createElement('div');
+                let badgeHtml = '';
+                if (event.diffMs < 0) {
+                    item.className = 'notification-item';
+                    badgeHtml = `<span class="notify-badge badge-soon" style="background:#eee;">จบไปแล้ว</span>`;
+                } else if (event.diffDays === 0) {
+                    item.className = 'notification-item urgent';
+                    if (event.diffHours < 1) { badgeHtml = `<span class="notify-badge badge-urgent">อีก ${event.diffMins} นาที! เตรียมตัว!</span>`; } 
+                    else { badgeHtml = `<span class="notify-badge badge-urgent">วันนี้! อีก ${event.diffHours} ชม. ${event.diffMins % 60} นาที</span>`; }
+                } else {
+                    item.className = 'notification-item';
+                    badgeHtml = `<span class="notify-badge badge-soon">อีก ${event.diffDays} วัน</span>`;
+                }
+                
+                let timeText = event.startTime ? `⏰ ${event.startTime} น.` : '⏰ ไม่ระบุเวลา';
+                let taskText = (event.tasks && event.tasks.length > 0) ? event.tasks.join(', ') : '';
+                
+                item.innerHTML = `
+                    ${badgeHtml}
+                    <div class="notify-title">${event.title}</div>
+                    <div class="notify-meta">${timeText} ${taskText ? '| ' + taskText : ''}</div>
+                `;
+                item.onclick = () => openViewModal(event);
+                list.appendChild(item);
+            });
+        }
+
+        // --- ระบบแปลงไฟล์ภาพเพื่อป้องกัน Google Sheets ค้าง ---
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // ย่อขนาดภาพให้ไม่เกิน 800px เพื่อประหยัดพื้นที่และให้โหลดไว
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const MAX_HEIGHT = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // แปลงเป็น Base64
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('imageBase64').value = dataUrl;
+                    document.getElementById('imagePreview').src = dataUrl;
+                    document.getElementById('imagePreviewContainer').style.display = 'block';
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            document.getElementById('eventImage').value = '';
+            document.getElementById('imageBase64').value = '';
+            document.getElementById('imagePreviewContainer').style.display = 'none';
+        }
+
+        function openAddModal(dateStr, eventToEdit = null) {
+            document.getElementById('selectedDateFull').value = dateStr;
+            
+            // เคลียร์ฟอร์ม
+            document.getElementById('editEventId').value = ''; 
+            document.getElementById('eventName').value = ''; 
+            document.getElementById('startTime').value = '10:00';
+            document.getElementById('eventPrice').value = '';
+            document.getElementById('otherLocation').value = '';
+            document.getElementById('eventLink').value = '';
+            removeImage(); // เคลียร์รูปภาพ
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+
+            if(eventToEdit) {
+                document.getElementById('modalFormTitle').innerText = '✏️ แก้ไขกำหนดการ';
+                document.getElementById('editEventId').value = eventToEdit.id;
+                document.getElementById('eventName').value = eventToEdit.title;
+                if(eventToEdit.startTime) document.getElementById('startTime').value = eventToEdit.startTime;
+                if(eventToEdit.price) document.getElementById('eventPrice').value = eventToEdit.price;
+                if(eventToEdit.link) document.getElementById('eventLink').value = eventToEdit.link;
+                if(eventToEdit.otherLocation) document.getElementById('otherLocation').value = eventToEdit.otherLocation;
+                
+                if(eventToEdit.image) {
+                    document.getElementById('imageBase64').value = eventToEdit.image;
+                    document.getElementById('imagePreview').src = eventToEdit.image;
+                    document.getElementById('imagePreviewContainer').style.display = 'block';
+                }
+
+                if(eventToEdit.tasks) {
+                    document.querySelectorAll('input[name="task"]').forEach(cb => { cb.checked = eventToEdit.tasks.includes(cb.value); });
+                }
+                if(eventToEdit.platforms) {
+                    document.querySelectorAll('input[name="platform"]').forEach(cb => { cb.checked = eventToEdit.platforms.includes(cb.value); });
+                }
+            } else {
+                document.getElementById('modalFormTitle').innerText = '📝 เพิ่มกำหนดการ';
+            }
+            document.getElementById('addEventModal').style.display = 'flex';
+        }
+
+        function openViewModal(event) {
+            currentViewEventId = event.id; 
+            const d = new Date(event.date);
+            const dateText = `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+            
+            document.getElementById('viewTitle').innerText = event.title;
+            document.getElementById('viewDateStr').innerText = `📅 วันที่: ${dateText}`;
+            document.getElementById('viewTime').innerText = event.startTime || 'ไม่ได้ระบุ';
+            
+            // จัดการราคา
+            document.getElementById('viewPrice').innerText = event.price ? `${Number(event.price).toLocaleString()} บาท` : '-';
+
+            document.getElementById('viewTasks').innerText = (event.tasks && event.tasks.length > 0) ? event.tasks.join(', ') : '-';
+            
+            let locations = [];
+            if(event.platforms && event.platforms.length > 0) locations.push(...event.platforms);
+            if(event.otherLocation) locations.push(event.otherLocation);
+            document.getElementById('viewLocation').innerText = locations.length > 0 ? locations.join(', ') : '-';
+            
+            // จัดการลิงก์
+            const linkContainer = document.getElementById('viewLinkContainer');
+            if (event.link) {
+                linkContainer.style.display = 'block';
+                document.getElementById('viewLink').href = event.link;
+                document.getElementById('viewLink').innerText = event.link;
+            } else {
+                linkContainer.style.display = 'none';
+            }
+
+            // จัดการรูปภาพ
+            const imgContainer = document.getElementById('viewImageContainer');
+            if(event.image) {
+                imgContainer.style.display = 'block';
+                document.getElementById('viewImage').src = event.image;
+            } else {
+                imgContainer.style.display = 'none';
+            }
+
+            document.getElementById('viewEventModal').style.display = 'flex';
+        }
+
+        function openZoomImage(src) {
+            document.getElementById('zoomedImage').src = src;
+            document.getElementById('imageZoomModal').style.display = 'flex';
+        }
+
+        function openEditModal() {
+            const eventToEdit = events.find(e => e.id.toString() === currentViewEventId.toString());
+            closeModal('viewEventModal');
+            openAddModal(eventToEdit.date, eventToEdit);
+        }
+
+        async function deleteEvent() {
+            if(confirm('ลบกำหนดการนี้ใช่ไหม?')) {
+                const btn = document.getElementById('deleteBtn');
+                btn.innerText = 'กำลังลบ...'; btn.disabled = true;
+
+                try {
+                    if(API_URL !== "วาง_URL_จาก_APPS_SCRIPT_ตรงนี้" && API_URL !== "") {
+                        await fetch(API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ action: 'delete', data: { id: currentViewEventId } })
+                        });
+                    }
+                    
+                    events = events.filter(e => e.id.toString() !== currentViewEventId.toString());
+                    closeModal('viewEventModal');
+                    renderCalendar();
+                    renderNotifications();
+                } catch(err) { 
+                    alert('เกิดข้อผิดพลาดในการลบงาน'); 
+                } finally { 
+                    btn.innerHTML = '🗑️ ลบ'; btn.disabled = false; 
+                }
+            }
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+
+        async function saveEvent() {
+            const idToEdit = document.getElementById('editEventId').value;
+            const title = document.getElementById('eventName').value;
+            if (!title) { alert('อย่าลืมใส่ชื่องานนะครับ!'); return; }
+
+            const eventData = {
+                id: idToEdit || Date.now().toString(),
+                date: document.getElementById('selectedDateFull').value, 
+                startTime: document.getElementById('startTime').value, 
+                title: title, 
+                price: document.getElementById('eventPrice').value,
+                tasks: Array.from(document.querySelectorAll('input[name="task"]:checked')).map(cb => cb.value),
+                platforms: Array.from(document.querySelectorAll('input[name="platform"]:checked')).map(cb => cb.value),
+                otherLocation: document.getElementById('otherLocation').value,
+                link: document.getElementById('eventLink').value,
+                image: document.getElementById('imageBase64').value // บันทึกรูปเข้าไปด้วย
+            };
+
+            const actionType = idToEdit ? 'edit' : 'add';
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = 'กำลังบันทึก...'; btn.disabled = true;
+
+            try {
+                if(API_URL !== "วาง_URL_จาก_APPS_SCRIPT_ตรงนี้" && API_URL !== "") {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: actionType, data: eventData })
+                    });
+                }
+
+                if (idToEdit) {
+                    const index = events.findIndex(e => e.id.toString() === idToEdit.toString());
+                    events[index] = eventData;
+                } else {
+                    events.push(eventData);
+                }
+
+                closeModal('addEventModal');
+                renderCalendar();
+                renderNotifications();
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล ลองใหม่อีกครั้งครับ');
+                console.error(err);
+            } finally {
+                btn.innerText = 'บันทึกกำหนดการ'; btn.disabled = false;
+            }
+        }
+
+        // เริ่มต้นการทำงาน
+        fetchEvents();
+        setInterval(renderNotifications, 60000); 
+    </script>
+</body>
+</html>
